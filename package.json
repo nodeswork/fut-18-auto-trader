@@ -20,7 +20,7 @@
   },
   "homepage": "https://github.com/nodeswork/fut-18-auto-trader#readme",
   "dependencies": {
-    "@nodeswork/applet": "0.0.22"
+    "@nodeswork/applet": "0.0.26"
   },
   "devDependencies": {
     "@types/node": "^8.0.33",

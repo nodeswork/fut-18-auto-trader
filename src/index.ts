@@ -7,15 +7,17 @@ const LOG = logger.getLogger();
 @applet.WorkerProvider({})
 class FutAutoTrader {
 
-  // @kiws.Input() fifaFut18Account: applet.FifaFut18Account;
+  @kiws.Input() fifaFut18Account: applet.FifaFut18Account;
 
   @applet.Worker({
-    name: 'Quote',
-    schedule: '0 * * * * *',
-    default: true,
+    name:      'Trade',
+    schedule:  '0 * * * * *',
+    default:   true,
   })
   async trade() {
-    LOG.info('TRADING....');
+    LOG.info('TRADING....', {
+      fifaFut18Account: this.fifaFut18Account,
+    });
   }
 }
 
@@ -24,6 +26,7 @@ class FutAutoTrader {
     FutAutoTrader,
   ],
   providers: [
+    applet.FifaFut18Account,
   ],
 })
 class Fut18AutoTraderModule {
