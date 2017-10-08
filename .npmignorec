@@ -1,0 +1,6 @@
+/doc
+/src
+/test
+/Makefile
+tsconfig.json
+gulpfile.js
