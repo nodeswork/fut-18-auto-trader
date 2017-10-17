@@ -45,6 +45,7 @@ class FutAutoTrader {
         this.accountInfos[account.name] = {
           credits:      userMassInfo.userInfo.credits,
           listingSize:  listingSizeEntry.value,
+          listedItems:  listingSizeEntry.value,
         };
         this.fifaFut18Accounts.push(account);
         await this.emitMetrics(
@@ -126,19 +127,26 @@ class FutAutoTrader {
       return this.isGoldContract(auction.itemData);
     });
 
+    this.accountInfos[account.name].listedItems = tradePile.auctionInfo.length;
+
     const groupedContractsByTradeState = _.groupBy(contracts, (auction) => {
       return auction.tradeState;
     });
 
-    for (const tradeState in groupedContractsByTradeState) {
-      const auctions = groupedContractsByTradeState[tradeState];
+    for (const tradeState of [ 'active', 'closed', 'expired' ]) {
       const goldPlayers = _.filter(
-        auctions,
-        (a) => a.itemData.resourceId === GOLD_PLAYER_CONTRACT_RESOURCE_ID,
+        contracts,
+        (a) => (
+          a.tradeState === tradeState &&
+          a.itemData.resourceId === GOLD_PLAYER_CONTRACT_RESOURCE_ID
+        ),
       );
       const goldCoaches = _.filter(
-        auctions,
-        (a) => a.itemData.resourceId === GOLD_COACH_CONTRACT_RESOURCE_ID,
+        contracts,
+        (a) => (
+          a.tradeState === tradeState &&
+          a.itemData.resourceId === GOLD_COACH_CONTRACT_RESOURCE_ID
+        ),
       );
 
       if (goldPlayers.length) {
@@ -240,6 +248,11 @@ class FutAutoTrader {
 
     if (targetContract == null || targetContract.count <= 0) {
       this.logger.info('No gold player contract in club');
+      return;
+    }
+    const accountInfo = this.accountInfos[account.name];
+    if (accountInfo.listedItems >= accountInfo.listingSize) {
+      this.logger.warn('No room to list');
       return;
     }
 
