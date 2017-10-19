@@ -86,7 +86,9 @@ class FutAutoTrader {
       }
 
       await this.emitMetrics(
-        account, {}, METRICS.HEALTHY_ACCOUNT, metrics.Average(healthy ? 1 : 0),
+        account, {}, METRICS.HEALTHY_ACCOUNT, metrics.Average(
+          healthy ? 1 : 0, this._fifaFut18Accounts.length,
+        ),
       );
     }
   }
@@ -176,7 +178,9 @@ class FutAutoTrader {
       metrics.Last(goldCoaches.length),
     );
 
-    this.accountInfos[account.name].listedItems = tradePile.auctionInfo.length;
+    this.accountInfos[account.name].listedItems = (
+      tradePile.auctionInfo == null ? 0 : tradePile.auctionInfo.length
+    );
 
     const groupedContractsByTradeState = _.groupBy(contracts, (auction) => {
       return auction.tradeState;
@@ -359,12 +363,11 @@ class FutAutoTrader {
       metrics.Last(goldCoaches ? goldCoaches.count : 0),
     );
 
-    const targetContract = _.find(
-      dc.itemData,
-      (d) => (
-        d.resourceId === GOLD_PLAYER_CONTRACT_RESOURCE_ID
-        || d.resourceId === GOLD_COACH_CONTRACT_RESOURCE_ID
-      ),
+    let targetContract = _.find(
+      dc.itemData, (d) => d.resourceId === GOLD_PLAYER_CONTRACT_RESOURCE_ID
+    );
+    targetContract = _.find(
+      dc.itemData, (d) => d.resourceId === GOLD_COACH_CONTRACT_RESOURCE_ID
     );
 
     if (targetContract == null || targetContract.count <= 0) {
@@ -389,10 +392,21 @@ class FutAutoTrader {
       return;
     }
 
+    let startingBid;
+    let buyNowPrice;
+
+    if (account.name === 'zyz.4.zyz@gmail.com') {
+      startingBid = 200;
+      buyNowPrice = 250;
+    } else {
+      startingBid = 250;
+      buyNowPrice = 300;
+    }
+
     const listResult = await account.list({
       itemId,
-      buyNowPrice:  300,
-      startingBid:  250,
+      buyNowPrice,
+      startingBid,
       duration:     3600,
     });
 
