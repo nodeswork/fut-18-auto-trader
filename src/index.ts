@@ -87,7 +87,7 @@ class FutAutoTrader {
 
       await this.emitMetrics(
         account, {}, METRICS.HEALTHY_ACCOUNT, metrics.Average(
-          healthy ? 1 : 0, this._fifaFut18Accounts.length,
+          healthy ? 2 : 0, 1 / this._fifaFut18Accounts.length,
         ),
       );
     }
@@ -111,6 +111,7 @@ class FutAutoTrader {
       await this.sendPurchasedContractsToClub(account);
       await this.removeOrRelistSellings(account);
       await this.listContracts(account);
+      await this.listContracts(account);
 
       this.emitMetrics(
         account, {}, METRICS.CLUB_VALUE,
@@ -129,18 +130,145 @@ class FutAutoTrader {
     this.logger.info('Trade ends successfully');
   }
 
-  private async emitMetrics<T>(
-    account:     applet.FifaFut18Account,
-    dimensions:  metrics.MetricsDimensions,
-    name:        string,
-    value:       metrics.MetricsValue<T>,
-  ) {
-    const d = metrics.dimensions(
-      DIMENSIONS.ACCOUNT_NAME, account.name,
-    );
-    await this.execution.updateMetrics({
-      dimensions: _.extend(d, dimensions), name, value,
+  private async sendPurchasedContractsToClub(account: applet.FifaFut18Account) {
+    this.logger.info('SendPurchasedContractsToClub', { account: account.name });
+    const items = await account.getItems();
+
+    const goldPlayers = _.filter(items.itemData, (item) => {
+      return item.resourceId === GOLD_PLAYER_CONTRACT_RESOURCE_ID;
     });
+    const goldCoaches = _.filter(items.itemData, (item) => {
+      return item.resourceId === GOLD_COACH_CONTRACT_RESOURCE_ID;
+    });
+
+    const targets = _
+      .chain(items.itemData)
+      .filter((item) => {
+        return (
+          item.resourceId === GOLD_PLAYER_CONTRACT_RESOURCE_ID
+          || item.resourceId === GOLD_COACH_CONTRACT_RESOURCE_ID
+        );
+      })
+      .map((item) => item.id)
+      .value();
+
+    this.logger.info('Items results', {
+      goldPlayers: goldPlayers.length,
+      goldCoaches: goldCoaches.length,
+    });
+
+    if (targets.length) {
+      this.logger.info(
+        'Send gold play contracts to my club', { num: targets.length },
+      );
+      const resp = await account.sendToMyClub(targets);
+      const numSuccess = _.filter(resp.itemData, (d) => d.success).length;
+      if (numSuccess !== targets.length) {
+        this.logger.error('Some items failed',
+          { numSuccess, target: targets.length, resp },
+        );
+      } else {
+        this.logger.info('Send gold play contracts to my club successfully',
+          { num: targets.length },
+        );
+
+        if (goldPlayers.length) {
+          await this.emitMetrics(
+            account,
+            metrics.dimensions(
+              constants.metrics.dimensions.CONTRACT_TYPE,
+              constants.metrics.CONTRACT_TYPES.GOLD_PLAYER
+            ),
+            constants.metrics.CONTRACTS_PURCHASED,
+            metrics.Count(goldPlayers.length),
+          );
+        }
+
+        if (goldCoaches.length) {
+          await this.emitMetrics(
+            account,
+            metrics.dimensions(
+              constants.metrics.dimensions.CONTRACT_TYPE,
+              constants.metrics.CONTRACT_TYPES.GOLD_COACH,
+            ),
+            constants.metrics.CONTRACTS_PURCHASED,
+            metrics.Count(goldCoaches.length),
+          );
+        }
+      }
+    }
+
+    const watchList = await account.getWatchList();
+    const purchased = _.filter(watchList.auctionInfo, (item) => {
+      return item.tradeState === 'closed' && item.bidState === 'highest';
+    });
+
+    if (purchased.length) {
+      await account.sendToMyClub(_.map(purchased, (item) => item.itemData.id));
+
+      const closedGoldPlayers = _.filter(purchased, (item) => {
+        return item.itemData.resourceId === GOLD_PLAYER_CONTRACT_RESOURCE_ID;
+      });
+      const closedGoldCoaches = _.filter(purchased, (item) => {
+        return item.itemData.resourceId === GOLD_COACH_CONTRACT_RESOURCE_ID;
+      });
+
+      await this.emitMetrics(
+        account,
+        metrics.dimensions(
+          constants.metrics.dimensions.CONTRACT_TYPE,
+          constants.metrics.CONTRACT_TYPES.GOLD_PLAYER
+        ),
+        constants.metrics.CONTRACTS_PURCHASED,
+        metrics.Count(closedGoldPlayers.length),
+      );
+      await this.emitMetrics(
+        account,
+        metrics.dimensions(
+          constants.metrics.dimensions.CONTRACT_TYPE,
+          constants.metrics.CONTRACT_TYPES.GOLD_COACH,
+        ),
+        constants.metrics.CONTRACTS_PURCHASED,
+        metrics.Count(closedGoldCoaches.length),
+      );
+    }
+
+    const outbids = _.filter(watchList.auctionInfo, (item) => {
+      return item.tradeState === 'closed' && item.bidState === 'outbid';
+    });
+
+    if (outbids.length) {
+
+      await account.deleteWatchlist(_.map(outbids, (item) => item.tradeId));
+
+      const outbidGoldPlayers = _.filter(outbids, (item) => {
+        return item.itemData.resourceId === GOLD_PLAYER_CONTRACT_RESOURCE_ID;
+      });
+      const outbidGoldCoaches = _.filter(outbids, (item) => {
+        return item.itemData.resourceId === GOLD_COACH_CONTRACT_RESOURCE_ID;
+      });
+
+      await this.emitMetrics(
+        account,
+        metrics.dimensions(
+          constants.metrics.dimensions.CONTRACT_TYPE,
+          constants.metrics.CONTRACT_TYPES.GOLD_PLAYER
+        ),
+        constants.metrics.CONTRACTS_OUTBID,
+        metrics.Count(outbidGoldPlayers.length),
+      );
+      await this.emitMetrics(
+        account,
+        metrics.dimensions(
+          constants.metrics.dimensions.CONTRACT_TYPE,
+          constants.metrics.CONTRACT_TYPES.GOLD_COACH,
+        ),
+        constants.metrics.CONTRACTS_OUTBID,
+        metrics.Count(outbidGoldCoaches.length),
+      );
+    }
+
+    this.logger.info('SendPurchasedContractsToClub finished successfully');
   }
 
   private async removeOrRelistSellings(account: applet.FifaFut18Account) {
@@ -295,7 +423,9 @@ class FutAutoTrader {
       await account.deleteSold();
     }
 
-    if (expiredContracts && expiredContracts.length >= 10) {
+    if (expiredContracts && expiredContracts.length >= 5 &&
+      expiredContracts.length <= 20) {
+
       this.logger.info('Relisting expired contracts');
       const resp = await account.relist();
       this.logger.info('Relisting result', resp);
@@ -315,6 +445,12 @@ class FutAutoTrader {
           DIMENSIONS.CONTRACT_TYPE, METRICS.CONTRACT_TYPES.GOLD_COACH,
         ), METRICS.CONTRACTS_RELISTED, metrics.Count(expiredCoaches),
       );
+    }
+
+    if (expiredContracts && expiredContracts.length > 20) {
+      await account.sendToMyClub(_.map(expiredContracts, (auction) => {
+        return auction.itemData.id;
+      }));
     }
 
     this.logger.info('RemoveOrRelistSellings finished');
@@ -364,11 +500,14 @@ class FutAutoTrader {
     );
 
     let targetContract = _.find(
-      dc.itemData, (d) => d.resourceId === GOLD_PLAYER_CONTRACT_RESOURCE_ID
-    );
-    targetContract = _.find(
       dc.itemData, (d) => d.resourceId === GOLD_COACH_CONTRACT_RESOURCE_ID
     );
+
+    if (targetContract == null) {
+      targetContract = _.find(
+        dc.itemData, (d) => d.resourceId === GOLD_PLAYER_CONTRACT_RESOURCE_ID
+      );
+    }
 
     if (targetContract == null || targetContract.count <= 0) {
       this.logger.info('No gold player contract in club');
@@ -392,16 +531,16 @@ class FutAutoTrader {
       return;
     }
 
-    let startingBid;
-    let buyNowPrice;
+    let startingBid = 200;
+    let buyNowPrice = 250;
 
-    if (account.name === 'zyz.4.zyz@gmail.com') {
-      startingBid = 200;
-      buyNowPrice = 250;
-    } else {
-      startingBid = 250;
-      buyNowPrice = 300;
-    }
+    // if (account.name === 'zyz.4.zyz@gmail.com') {
+      // startingBid = 200;
+      // buyNowPrice = 250;
+    // } else {
+      // startingBid = 250;
+      // buyNowPrice = 300;
+    // }
 
     const listResult = await account.list({
       itemId,
@@ -422,147 +561,6 @@ class FutAutoTrader {
       metrics.Count(1),
     );
     this.logger.info('ListContracts successfully', listResult);
-  }
-
-  private async sendPurchasedContractsToClub(account: applet.FifaFut18Account) {
-    this.logger.info('SendPurchasedContractsToClub', { account: account.name });
-    const items = await account.getItems();
-
-    const goldPlayers = _.filter(items.itemData, (item) => {
-      return item.resourceId === GOLD_PLAYER_CONTRACT_RESOURCE_ID;
-    });
-    const goldCoaches = _.filter(items.itemData, (item) => {
-      return item.resourceId === GOLD_COACH_CONTRACT_RESOURCE_ID;
-    });
-
-    const targets = _
-      .chain(items.itemData)
-      .filter((item) => {
-        return (
-          item.resourceId === GOLD_PLAYER_CONTRACT_RESOURCE_ID
-          || item.resourceId === GOLD_COACH_CONTRACT_RESOURCE_ID
-        );
-      })
-      .map((item) => item.id)
-      .value();
-
-    this.logger.info('Items results', {
-      goldPlayers: goldPlayers.length,
-      goldCoaches: goldCoaches.length,
-    });
-
-    if (targets.length) {
-      this.logger.info(
-        'Send gold play contracts to my club', { num: targets.length },
-      );
-      const resp = await account.sendToMyClub(targets);
-      const numSuccess = _.filter(resp.itemData, (d) => d.success).length;
-      if (numSuccess !== targets.length) {
-        this.logger.error('Some items failed',
-          { numSuccess, target: targets.length, resp },
-        );
-      } else {
-        this.logger.info('Send gold play contracts to my club successfully',
-          { num: targets.length },
-        );
-
-        if (goldPlayers.length) {
-          await this.emitMetrics(
-            account,
-            metrics.dimensions(
-              constants.metrics.dimensions.CONTRACT_TYPE,
-              constants.metrics.CONTRACT_TYPES.GOLD_PLAYER
-            ),
-            constants.metrics.CONTRACTS_PURCHASED,
-            metrics.Count(goldPlayers.length),
-          );
-        }
-
-        if (goldCoaches.length) {
-          await this.emitMetrics(
-            account,
-            metrics.dimensions(
-              constants.metrics.dimensions.CONTRACT_TYPE,
-              constants.metrics.CONTRACT_TYPES.GOLD_COACH,
-            ),
-            constants.metrics.CONTRACTS_PURCHASED,
-            metrics.Count(goldCoaches.length),
-          );
-        }
-      }
-    }
-
-    const watchList = await account.getWatchList();
-    const purchased = _.filter(watchList.auctionInfo, (item) => {
-      return item.tradeState === 'closed' && item.bidState === 'highest';
-    });
-
-    if (purchased.length) {
-      await account.sendToMyClub(_.map(purchased, (item) => item.itemData.id));
-
-      const closedGoldPlayers = _.filter(purchased, (item) => {
-        return item.itemData.resourceId === GOLD_PLAYER_CONTRACT_RESOURCE_ID;
-      });
-      const closedGoldCoaches = _.filter(purchased, (item) => {
-        return item.itemData.resourceId === GOLD_COACH_CONTRACT_RESOURCE_ID;
-      });
-
-      await this.emitMetrics(
-        account,
-        metrics.dimensions(
-          constants.metrics.dimensions.CONTRACT_TYPE,
-          constants.metrics.CONTRACT_TYPES.GOLD_PLAYER
-        ),
-        constants.metrics.CONTRACTS_PURCHASED,
-        metrics.Count(closedGoldPlayers.length),
-      );
-      await this.emitMetrics(
-        account,
-        metrics.dimensions(
-          constants.metrics.dimensions.CONTRACT_TYPE,
-          constants.metrics.CONTRACT_TYPES.GOLD_COACH,
-        ),
-        constants.metrics.CONTRACTS_PURCHASED,
-        metrics.Count(closedGoldCoaches.length),
-      );
-    }
-
-    const outbids = _.filter(watchList.auctionInfo, (item) => {
-      return item.tradeState === 'closed' && item.bidState === 'outbid';
-    });
-
-    if (outbids.length) {
-
-      await account.deleteWatchlist(_.map(outbids, (item) => item.tradeId));
-
-      const outbidGoldPlayers = _.filter(outbids, (item) => {
-        return item.itemData.resourceId === GOLD_PLAYER_CONTRACT_RESOURCE_ID;
-      });
-      const outbidGoldCoaches = _.filter(outbids, (item) => {
-        return item.itemData.resourceId === GOLD_COACH_CONTRACT_RESOURCE_ID;
-      });
-
-      await this.emitMetrics(
-        account,
-        metrics.dimensions(
-          constants.metrics.dimensions.CONTRACT_TYPE,
-          constants.metrics.CONTRACT_TYPES.GOLD_PLAYER
-        ),
-        constants.metrics.CONTRACTS_OUTBID,
-        metrics.Count(outbidGoldPlayers.length),
-      );
-      await this.emitMetrics(
-        account,
-        metrics.dimensions(
-          constants.metrics.dimensions.CONTRACT_TYPE,
-          constants.metrics.CONTRACT_TYPES.GOLD_COACH,
-        ),
-        constants.metrics.CONTRACTS_OUTBID,
-        metrics.Count(outbidGoldCoaches.length),
-      );
-    }
-
-    this.logger.info('SendPurchasedContractsToClub finished successfully');
   }
 
   private async tradeB150(
@@ -603,7 +601,10 @@ class FutAutoTrader {
           );
           continue;
         }
-        const resp = await account.bid(item.tradeId, 150);
+        const resp = await this.bid(account, item, {
+          purpose:  'B150',
+          price:    150,
+        });
 
         await this.emitMetrics(
           account, {}, METRICS.CONTRACTS_BID_B150, metrics.Average(1),
@@ -613,10 +614,48 @@ class FutAutoTrader {
         this.accountInfos[account.name].credits -= 150;
       }
     } catch (e) {
-      this.logger.error('Bid item error', e && e.message);
+      this.logger.error('Bid item error', e);
       await this.emitMetrics(
         account, {}, METRICS.CONTRACTS_BID_B150, metrics.Average(1),
       );
+    }
+  }
+
+  private async bid(
+    account: applet.FifaFut18Account,
+    auction: applet.fifa.fut18.AuctionInfo,
+    bidOptions: { purpose: string; price: number; },
+  ): Promise<applet.fifa.fut18.BidResponse> {
+    const contractType = (
+      auction.itemData.resourceId === GOLD_PLAYER_CONTRACT_RESOURCE_ID ?
+      METRICS.CONTRACT_TYPES.GOLD_PLAYER : METRICS.CONTRACT_TYPES.GOLD_COACH
+    );
+    try {
+      const resp = await account.bid(auction.tradeId, bidOptions.price);
+      await this.emitMetrics(
+        account, metrics.dimensions(
+          DIMENSIONS.CONTRACT_TYPE, contractType,
+          DIMENSIONS.BID_PRICE, bidOptions.price,
+          DIMENSIONS.BID_STATUS, 200,
+          DIMENSIONS.BID_PURPOSE, bidOptions.purpose,
+        ),
+        METRICS.BID,
+        metrics.Average(1),
+      );
+      return resp;
+    } catch (e) {
+      const bidStatus = e.meta && e.meta.responseCode || 0;
+      await this.emitMetrics(
+        account, metrics.dimensions(
+          DIMENSIONS.CONTRACT_TYPE, contractType,
+          DIMENSIONS.BID_PRICE, bidOptions.price,
+          DIMENSIONS.BID_STATUS, bidStatus,
+          DIMENSIONS.BID_PURPOSE, bidOptions.purpose,
+        ),
+        METRICS.BID,
+        metrics.Average(0),
+      );
+      throw e;
     }
   }
 
@@ -666,30 +705,28 @@ class FutAutoTrader {
           this.logger.warn(
             'Not enough budget', { account: account.name, credits },
           );
-          await this.updateBidMetrics(account, 'No Budget');
           continue;
         }
         const resp = await account.bid(item.tradeId, 200);
-        await this.updateBidMetrics(account, 'Success');
         this.logger.info('Bid item successfully');
       }
     } catch (e) {
       this.logger.error('Bid item error', e && e.message);
-      await this.updateBidMetrics(account, 'Error');
     }
     this.logger.info('TradeGoldContract successfully');
   }
 
-  private async updateBidMetrics(
-    account: applet.FifaFut18Account, bidStatus: string,
+  private async emitMetrics<T>(
+    account:     applet.FifaFut18Account,
+    dimensions:  metrics.MetricsDimensions,
+    name:        string,
+    value:       metrics.MetricsValue<T>,
   ) {
-    const dimensions: any = {};
-    dimensions[constants.metrics.dimensions.ACCOUNT] = account.name;
-    dimensions[constants.metrics.dimensions.BID_STATUS] = bidStatus;
+    const d = metrics.dimensions(
+      DIMENSIONS.ACCOUNT_NAME, account.name,
+    );
     await this.execution.updateMetrics({
-      dimensions,
-      name: constants.metrics.BID,
-      value: metrics.Count(1),
+      dimensions: _.extend(d, dimensions), name, value,
     });
   }
 

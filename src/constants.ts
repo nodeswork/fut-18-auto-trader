@@ -9,11 +9,13 @@ export namespace metrics {
     export const API_OPERATOR             = 'operator';
     export const ACCOUNT_NAME             = 'account';
     export const CONTRACT_TYPE            = 'contract_type';
+    export const BID_PRICE                = 'bid_price';
+    export const BID_STATUS               = 'bid_status';
+    export const BID_PURPOSE              = 'bid_purpose';
 
     export const ACCOUNT                  = 'Account';
 
     export const ACCOUNT_STATUS           = 'Account Status';
-    export const BID_STATUS               = 'Bid Status';
     export const LISTING_STATUS           = 'Listing Status';
     export const TRADE_STATE              = 'Trade State';
   }
@@ -35,6 +37,8 @@ export namespace metrics {
   export const ACTIVE_CONTRACTS_AVERAGE   = 'active_contracts_average';
   export const EXPIRED_CONTRACTS_AVERAGE  = 'expired_contracts_average';
 
+  export const BID                        = 'bid';
+
   export const RELIST                     = 'relist';
 
   export const CONTRACTS_SEARCH_B150      = 'contracts_search_b150';
@@ -50,5 +54,4 @@ export namespace metrics {
   export const CONTRACT_SEARCHED   = 'Contract Searched';
   export const CONTRACT_FOUND      = 'Contract Found';
 
-  export const BID                 = 'Bid';
 }
