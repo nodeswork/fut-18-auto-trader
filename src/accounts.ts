@@ -6,6 +6,8 @@ import { metrics }                from '@nodeswork/utils';
 import * as constants             from './constants';
 import * as utils                 from './utils';
 
+const sleep = require('sleep-promise');
+
 const RESOURCES  = constants.resources;
 const METRICS    = constants.metrics;
 const DIMENSIONS = constants.metrics.dimensions;
@@ -252,6 +254,7 @@ export class FifaFut18Account {
         METRICS.BID,
         metrics.Average(bidStatus === 200 ? 1 : 0),
       );
+      await sleep(1000);
     }
   }
 }

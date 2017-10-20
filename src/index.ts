@@ -11,6 +11,8 @@ import { AccountActivityTracker } from './tracker';
 import { FifaFut18Account }       from './accounts';
 import * as utils                 from './utils';
 
+const sleep = require('sleep-promise');
+
 const GOLD_PLAYER_CONTRACT_RESOURCE_ID        = 5001006;
 const GOLD_COACH_CONTRACT_RESOURCE_ID         = 5001013;
 const GOLD_PLAYER_CONTRACT_DUPLICATE_ITEM_ID  = 116603334268;
@@ -85,8 +87,18 @@ class FutAutoTrader {
       await account.emitClubMetrics();
     }
 
-    for (let idx = 0; idx < this.accounts.length; idx++) {
-      await this.tradeB150(this.accounts[idx], idx);
+    for (let idx = 0; idx < 10; idx++) {
+      this.logger.info('Search page', { page: idx });
+      const account = this.accounts[idx % this.accounts.length];
+      try {
+        if (account.accountInfo.credits > 5000) {
+          await this.tradeB200(account, idx);
+        } else {
+          await this.tradeB150(account, idx);
+        }
+      } catch (e) {
+        this.logger.error('Trade error');
+      }
     }
 
     this.logger.info('Trade ends successfully');
@@ -322,62 +334,47 @@ class FutAutoTrader {
     }
   }
 
-  // private async tradeGoldContract(
-    // account: applet.FifaFut18Account, page: number = 0,
-  // ) {
-    // this.logger.info('TradeGoldContract', { account: account.name, page, });
+  private async tradeB200(
+    account: FifaFut18Account, page: number = 0,
+  ) {
+    this.logger.info('TradeB200', { account: account.name, page, });
 
-    // const searchResult = await account.searchMarket({
-      // start:  page * 50,
-      // num:    50,
-      // type:   'development',
-      // cat:    'contract',
-      // lev:    'gold',
-      // maxb:   200,
-    // });
+    const searchResult = await account.searchMarket({
+      start:  page * 50,
+      num:    50,
+      type:   'development',
+      cat:    'contract',
+      lev:    'gold',
+      maxb:   200,
+    });
 
-    // const total = searchResult.auctionInfo.length;
+    const total = searchResult.auctionInfo.length;
 
-    // const auctions = _.filter(searchResult.auctionInfo, (auctionInfo) => {
-      // return this.isGoldContract(auctionInfo.itemData);
-    // });
+    const auctions = utils.filterGoldContracts(searchResult.auctionInfo);
+    this.logger.info('Found items', { total, target: auctions.length });
 
-    // this.logger.info('Found items', { total, target: auctions.length });
+    await account.emitMetrics(
+      {}, METRICS.CONTRACTS_SEARCH_BN200,
+      metrics.Average(auctions.length / total, total),
+    );
 
-    // await this.emitMetrics(
-      // account, {}, METRICS.CONTRACTS_SEARCH_BN200,
-      // metrics.Average(auctions.length / total, total),
-    // );
+    for (const item of auctions) {
+      this.logger.info('Bid item',
+        _.pick(item, 'tradeId', 'resourceId', 'discardValue', 'rareflag'),
+      );
+      if (account.accountInfo.credits < 200) {
+        this.logger.warn('Not enough budget', {
+          account: account.name, credits: account.accountInfo.credits,
+        });
+        continue;
+      }
+      await account.bid(item, { purpose: 'B200', price: 200 });
+      this.logger.info('Bid item successfully');
+      account.accountInfo.credits -= 200;
+    }
 
-    // await this.emitMetrics(
-      // account, {}, constants.metrics.CONTRACT_SEARCHED,
-      // metrics.Count(total),
-    // );
-    // await this.emitMetrics(
-      // account, {}, constants.metrics.CONTRACT_FOUND,
-      // metrics.Count(auctions.length),
-    // );
-
-    // try {
-      // for (const item of auctions) {
-        // this.logger.info('Bid item',
-          // _.pick(item, 'tradeId', 'resourceId', 'discardValue', 'rareflag'),
-        // );
-        // const credits = this.accountInfos[account.name].credits;
-        // if (credits < 200) {
-          // this.logger.warn(
-            // 'Not enough budget', { account: account.name, credits },
-          // );
-          // continue;
-        // }
-        // const resp = await account.bid(item.tradeId, 200);
-        // this.logger.info('Bid item successfully');
-      // }
-    // } catch (e) {
-      // this.logger.error('Bid item error', e && e.message);
-    // }
-    // this.logger.info('TradeGoldContract successfully');
-  // }
+    this.logger.info('TradeB200 successfully');
+  }
 }
 
 @applet.Module({
