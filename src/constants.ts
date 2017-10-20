@@ -1,8 +1,25 @@
+export namespace resources {
+  export const GOLD_PLAYER_CONTRACT_RESOURCE_ID        = 5001006;
+  export const GOLD_COACH_CONTRACT_RESOURCE_ID         = 5001013;
+}
+
+export namespace trade.state {
+  export const ACTIVE   = 'active';
+  export const EXPIRED  = 'expired';
+  export const CLOSED   = 'closed';
+}
+
+export namespace bid.state {
+  export const HIGHEST = 'highest';
+  export const OUTBID  = 'outbid';
+}
+
 export namespace metrics {
 
   export const CONTRACT_TYPES = {
     GOLD_PLAYER: 'Gold Player',
     GOLD_COACH:  'Gold Coach',
+    UNKNOWN:     'Unknown',
   };
 
   export namespace dimensions {
@@ -22,6 +39,7 @@ export namespace metrics {
 
   export const API_STATUS                 = 'api_status';
   export const HEALTHY_ACCOUNT            = 'healthy_account';
+  export const TRADE_REQUEST              = 'trade_request';
 
   export const CREDITS                    = 'credits';
   export const LISTING_SIZE               = 'listing_size';
@@ -36,9 +54,10 @@ export namespace metrics {
   export const CONTRACTS_OUTBID           = 'contracts_outbid';
   export const ACTIVE_CONTRACTS_AVERAGE   = 'active_contracts_average';
   export const EXPIRED_CONTRACTS_AVERAGE  = 'expired_contracts_average';
+  export const SOLD_CONTRACTS_AVERAGE     = 'sold_contracts_average';
 
   export const BID                        = 'bid';
-
+  export const LIST                       = 'list';
   export const RELIST                     = 'relist';
 
   export const CONTRACTS_SEARCH_B150      = 'contracts_search_b150';
@@ -46,12 +65,10 @@ export namespace metrics {
 
   export const CONTRACTS_BID_B150         = 'contracts_bid_b150';
 
-  export const TRADE_REQUEST       = 'Trade Request';
-  export const ACCOUNTS            = 'Accounts';
-  export const LISTING_ITEMS       = 'Listing Items';
-  export const LIST_CONTRACTS      = 'List Contracts';
+  // export const ACCOUNTS            = 'Accounts';
+  // export const LISTING_ITEMS       = 'Listing Items';
 
-  export const CONTRACT_SEARCHED   = 'Contract Searched';
-  export const CONTRACT_FOUND      = 'Contract Found';
+  // export const CONTRACT_SEARCHED   = 'Contract Searched';
+  // export const CONTRACT_FOUND      = 'Contract Found';
 
 }
