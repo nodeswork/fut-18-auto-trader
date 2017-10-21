@@ -48,7 +48,9 @@ class FutAutoTrader {
         metrics.dimensions(DIMENSIONS.ACCOUNT_NAME, originalAccount.name),
       ));
 
-      const account = new FifaFut18Account(originalAccount, this.execution);
+      const account = new FifaFut18Account(
+        originalAccount, this.execution, this.logger,
+      );
       await account.init();
       if (account.accountInfo.healthy) {
         this.accounts.push(account);
@@ -338,9 +340,6 @@ class FutAutoTrader {
     );
 
     for (const item of biddable) {
-      this.logger.info('Bid item',
-        _.pick(item, 'tradeId', 'resourceId', 'discardValue', 'rareflag'),
-      );
       if (account.accountInfo.credits < 150) {
         this.logger.warn('Not enough budget', {
           account: account.name, credits: account.accountInfo.credits,
@@ -349,7 +348,6 @@ class FutAutoTrader {
       }
 
       await account.bid(item, { purpose: 'B150', price: 150 });
-      this.logger.info('Bid item successfully');
       account.accountInfo.credits -= 150;
     }
   }
@@ -379,9 +377,6 @@ class FutAutoTrader {
     );
 
     for (const item of auctions) {
-      this.logger.info('Bid item',
-        _.pick(item, 'tradeId', 'resourceId', 'discardValue', 'rareflag'),
-      );
       if (account.accountInfo.credits < 200) {
         this.logger.warn('Not enough budget', {
           account: account.name, credits: account.accountInfo.credits,
@@ -389,7 +384,6 @@ class FutAutoTrader {
         continue;
       }
       await account.bid(item, { purpose: 'B200', price: 200 });
-      this.logger.info('Bid item successfully');
       account.accountInfo.credits -= 200;
     }
 

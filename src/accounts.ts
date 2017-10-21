@@ -39,8 +39,9 @@ export class FifaFut18Account {
   public accountInfo: FifaFut18AccountInfo;
 
   constructor(
-    public account: applet.FifaFut18Account,
-    private execution: applet.ExecutionMetrics,
+    public account:     applet.FifaFut18Account,
+    private execution:  applet.ExecutionMetrics,
+    private logger:     applet.ContextLogger,
   ) {
     this.name = account.name;
   }
@@ -244,6 +245,13 @@ export class FifaFut18Account {
     auction: applet.fifa.fut18.AuctionInfo,
     bidOptions: { purpose: string; price: number; },
   ): Promise<applet.fifa.fut18.BidResponse> {
+    this.logger.info('Bid item', {
+      account:     this.account.name,
+      tradeId:     auction.tradeId,
+      resourceId:  auction.itemData.resourceId,
+      purpose:     bidOptions.purpose,
+      price:       bidOptions.price,
+    });
     const contractType = utils.getContractType(auction);
     let   bidStatus    = 200;
     try {
@@ -252,6 +260,11 @@ export class FifaFut18Account {
       bidStatus = e.meta && e.meta.responseCode || 0;
       throw e;
     } finally {
+      if (bidStatus === 200) {
+        this.logger.info('Bid item successfully');
+      } else {
+        this.logger.error('Bid item failed');
+      }
       await this.emitMetrics(
         metrics.dimensions(
           DIMENSIONS.CONTRACT_TYPE, contractType,
