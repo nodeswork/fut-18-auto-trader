@@ -53,7 +53,11 @@ class FutAutoTrader {
       if (account.accountInfo.healthy) {
         this.accounts.push(account);
       }
-      await account.emitMetrics({}, METRICS.HEALTHY_ACCOUNT, metrics.Average(
+      await account.emitMetrics(
+        metrics.dimensions(
+          DIMENSIONS.UNHEALTY_REASON, account.accountInfo.unhealthyReason
+        ),
+        METRICS.HEALTHY_ACCOUNT, metrics.Average(
         account.accountInfo.healthy ? total : 0, 1 / total,
       ));
     }
@@ -85,19 +89,19 @@ class FutAutoTrader {
       await account.emitClubMetrics();
     }
 
-    // for (let idx = 0; idx < 4; idx++) {
-      // this.logger.info('Search page', { page: idx });
-      // const account = this.accounts[idx % this.accounts.length];
-      // try {
-        // if (account.accountInfo.credits > 5000) {
-          // await this.tradeB200(account, idx);
-        // } else {
-          // await this.tradeB150(account, idx);
-        // }
-      // } catch (e) {
-        // this.logger.error('Trade error');
-      // }
-    // }
+    for (let idx = 0; idx < 4; idx++) {
+      this.logger.info('Search page', { page: idx });
+      const account = this.accounts[idx % this.accounts.length];
+      try {
+        if (account.accountInfo.credits > 5000) {
+          await this.tradeB200(account, idx);
+        } else {
+          await this.tradeB150(account, idx);
+        }
+      } catch (e) {
+        this.logger.error('Trade error');
+      }
+    }
 
     this.logger.info('Trade ends successfully');
   }
@@ -177,6 +181,7 @@ class FutAutoTrader {
     const closed    = utils.filterClosedTrades(contracts);
     const expired   = utils.filterExpiredTrades(contracts);
     const active    = utils.filterActiveTrades(contracts);
+    const notListed = _.filter(contracts, (x) => x.tradeId === 0);
 
     const info          = account.accountInfo;
     info.closedPlayers  = utils.filterGoldPlayerContracts(closed).length;
@@ -222,6 +227,13 @@ class FutAutoTrader {
       info.expiredCoaches = 0;
     }
 
+    if (notListed.length > 3) {
+      this.logger.info('Send back not listed contracts',
+        { num: notListed.length },
+      );
+      await account.sendToMyClub(utils.getItemIds(notListed));
+    }
+
     this.logger.info('RemoveOrRelistSellings finished');
   }
 
@@ -248,6 +260,10 @@ class FutAutoTrader {
 
     if (target == null || target.count <= 0) {
       this.logger.info('No gold player contract in club');
+      return;
+    }
+
+    if (account.name === 'zyz.4.zy.z@gmail.com') {
       return;
     }
 

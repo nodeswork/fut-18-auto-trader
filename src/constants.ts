@@ -30,6 +30,8 @@ export namespace metrics {
     export const BID_PRICE                = 'bid_price';
     export const BID_STATUS               = 'bid_status';
     export const BID_PURPOSE              = 'bid_purpose';
+    export const UNHEALTY_REASON          = 'reason';
+    export const API_RESPONSE_CODE        = 'code';
 
     export const ACCOUNT                  = 'Account';
 

@@ -1,10 +1,10 @@
-import * as _                     from 'underscore';;
+import * as _                      from 'underscore';;
 
-import * as applet                from '@nodeswork/applet';
-import { metrics }                from '@nodeswork/utils';
+import * as applet                 from '@nodeswork/applet';
+import { metrics, NodesworkError } from '@nodeswork/utils';
 
-import * as constants             from './constants';
-import * as utils                 from './utils';
+import * as constants              from './constants';
+import * as utils                  from './utils';
 
 const sleep = require('sleep-promise');
 
@@ -16,6 +16,7 @@ const CONTRACT_PRICE = 200;
 
 export interface FifaFut18AccountInfo {
   healthy:           boolean;
+  unhealthyReason:   string;
   credits:           number;
   listingSize:       number;
   listedItems:       number;
@@ -48,6 +49,10 @@ export class FifaFut18Account {
     try {
       const userMassInfo = await this.account.getUserMassInfo();
 
+      if (userMassInfo.userInfo.feature.trade !== 2) {
+        throw new NodesworkError('no_trade_feature');
+      }
+
       const listingSizeEntry = _.find(
         userMassInfo.pileSizeClientData.entries, (x) => x.key === 2,
       );
@@ -57,6 +62,7 @@ export class FifaFut18Account {
 
       this.accountInfo = {
         healthy:           true,
+        unhealthyReason:   '',
         credits:           userMassInfo.userInfo.credits,
         listingSize:       listingSizeEntry.value,
         listedItems:       listingSizeEntry.value,
@@ -82,8 +88,10 @@ export class FifaFut18Account {
         metrics.Average(transferListSizeEntry.value),
       );
     } catch (e) {
+      const unhealthyReason: string = e.message || 'unknown';
       this.accountInfo = {
         healthy:           false,
+        unhealthyReason,
         credits:           0,
         listingSize:       0,
         listedItems:       0,

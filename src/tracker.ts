@@ -13,7 +13,9 @@ export class AccountActivityTracker implements applet.OperateTracker {
 
   async track(options: applet.AccountOperateOptions, err: any, result: any) {
     const dimensions = _.clone(this.dimensions);
+    const status     = err ? (err.meta && err.meta.responseCode || 0) : 200;
     dimensions[constants.metrics.dimensions.API_OPERATOR] = options.name;
+    dimensions[constants.metrics.dimensions.API_RESPONSE_CODE] = status;
     await this.execution.updateMetrics({
       name:        constants.metrics.API_STATUS,
       dimensions,
