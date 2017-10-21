@@ -11,8 +11,6 @@ import { AccountActivityTracker } from './tracker';
 import { FifaFut18Account }       from './accounts';
 import * as utils                 from './utils';
 
-const sleep = require('sleep-promise');
-
 const GOLD_PLAYER_CONTRACT_RESOURCE_ID        = 5001006;
 const GOLD_COACH_CONTRACT_RESOURCE_ID         = 5001013;
 const GOLD_PLAYER_CONTRACT_DUPLICATE_ITEM_ID  = 116603334268;
@@ -87,19 +85,19 @@ class FutAutoTrader {
       await account.emitClubMetrics();
     }
 
-    for (let idx = 0; idx < 10; idx++) {
-      this.logger.info('Search page', { page: idx });
-      const account = this.accounts[idx % this.accounts.length];
-      try {
-        if (account.accountInfo.credits > 5000) {
-          await this.tradeB200(account, idx);
-        } else {
-          await this.tradeB150(account, idx);
-        }
-      } catch (e) {
-        this.logger.error('Trade error');
-      }
-    }
+    // for (let idx = 0; idx < 4; idx++) {
+      // this.logger.info('Search page', { page: idx });
+      // const account = this.accounts[idx % this.accounts.length];
+      // try {
+        // if (account.accountInfo.credits > 5000) {
+          // await this.tradeB200(account, idx);
+        // } else {
+          // await this.tradeB150(account, idx);
+        // }
+      // } catch (e) {
+        // this.logger.error('Trade error');
+      // }
+    // }
 
     this.logger.info('Trade ends successfully');
   }
@@ -199,19 +197,25 @@ class FutAutoTrader {
       account.accountInfo.listedItems -= expired.length;
     }
 
-    // Step 2 - Relist if 5 <= expired contracts <= 20
-    if (expired.length >= 5 && expired.length <= 20) {
+    // Step 2 - Relist if 10 <= expired contracts <= 20
+    let releasedFailed = false;
+    if (expired.length >= 10 && expired.length <= 20) {
       this.logger.info('Relisting expired contracts', { num: expired.length });
-      await account.relist();
+      try {
+        await account.relist();
 
-      await account.emitGoldContractsMetrics(
-        {}, METRICS.CONTRACTS_RELISTED,
-        metrics.Count(info.expiredPlayers), metrics.Count(info.expiredCoaches),
-      );
+        await account.emitGoldContractsMetrics(
+          {}, METRICS.CONTRACTS_RELISTED,
+          metrics.Count(info.expiredPlayers), metrics.Count(info.expiredCoaches),
+        );
+      } catch (e) {
+        this.logger.info('Relisting expired contracts failed');
+        releasedFailed = true;
+      }
     }
 
     // Step 3 - Send back to club if expired contracts > 20
-    if (expired.length > 20) {
+    if (expired.length > 20 || releasedFailed) {
       this.logger.info('Send back expired contracts', { num: expired.length });
       await account.sendToMyClub(utils.getItemIds(expired));
       info.expiredPlayers = 0;

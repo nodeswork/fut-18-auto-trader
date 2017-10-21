@@ -1,5 +1,6 @@
 export namespace resources {
   export const GOLD_PLAYER_CONTRACT_RESOURCE_ID        = 5001006;
+  export const GOLD_PLAYER_CONTRACT99_RESOURCE_ID        = 5001007;
   export const GOLD_COACH_CONTRACT_RESOURCE_ID         = 5001013;
 }
 

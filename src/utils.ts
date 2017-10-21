@@ -18,6 +18,7 @@ export function getContractType(data: AuctionOrItem): string {
   const item = getItemData(data);
   switch (item.resourceId) {
     case RESOURCES.GOLD_PLAYER_CONTRACT_RESOURCE_ID:
+    case RESOURCES.GOLD_PLAYER_CONTRACT99_RESOURCE_ID:
       return METRICS.CONTRACT_TYPES.GOLD_PLAYER;
     case RESOURCES.GOLD_COACH_CONTRACT_RESOURCE_ID:
       return METRICS.CONTRACT_TYPES.GOLD_COACH;
@@ -39,8 +40,9 @@ export function isGoldContract(data: AuctionOrItem): boolean {
 }
 
 export function isGoldPlayerContract(data: AuctionOrItem): boolean {
-  return getItemData(data).resourceId ===
-    RESOURCES.GOLD_PLAYER_CONTRACT_RESOURCE_ID;
+  const itemData = getItemData(data);
+  return itemData.resourceId === RESOURCES.GOLD_PLAYER_CONTRACT_RESOURCE_ID ||
+    itemData.resourceId === RESOURCES.GOLD_PLAYER_CONTRACT99_RESOURCE_ID;
 }
 
 export function isGoldCoachContract(data: AuctionOrItem): boolean {
