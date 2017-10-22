@@ -67,7 +67,7 @@ class FutAutoTrader {
 
   @applet.Worker({
     name:      'Trade',
-    schedule:  '0 * * * * *',
+    schedule:  '0 0 * * * *',
     default:   true,
   })
   async trade() {
@@ -79,31 +79,31 @@ class FutAutoTrader {
 
     await this.intializeAccountInfo();
 
-    for (const account of this.accounts) {
-      await this.sendPurchasedContractsToClub(account);
-      await this.removeOrRelistSellings(account);
-      await this.listContracts(account, {
-        count:        2,
-        startingBid:  250,
-        buyNowPrice:  300,
-      });
+    // for (const account of this.accounts) {
+      // await this.sendPurchasedContractsToClub(account);
+      // await this.removeOrRelistSellings(account);
+      // await this.listContracts(account, {
+        // count:        2,
+        // startingBid:  250,
+        // buyNowPrice:  300,
+      // });
 
-      await account.emitClubMetrics();
-    }
+      // await account.emitClubMetrics();
+    // }
 
-    for (let idx = 0; idx < 4; idx++) {
-      this.logger.info('Search page', { page: idx });
-      const account = this.accounts[idx % this.accounts.length];
-      try {
-        if (account.accountInfo.credits > 5000) {
-          await this.tradeB200(account, idx);
-        } else {
-          await this.tradeB150(account, idx);
-        }
-      } catch (e) {
-        this.logger.error('Trade error');
-      }
-    }
+    // for (let idx = 0; idx < 4; idx++) {
+      // this.logger.info('Search page', { page: idx });
+      // const account = this.accounts[idx % this.accounts.length];
+      // try {
+        // if (account.accountInfo.credits > 5000) {
+          // await this.tradeB200(account, idx);
+        // } else {
+          // await this.tradeB150(account, idx);
+        // }
+      // } catch (e) {
+        // this.logger.error('Trade error');
+      // }
+    // }
 
     this.logger.info('Trade ends successfully');
   }
@@ -265,9 +265,9 @@ class FutAutoTrader {
       return;
     }
 
-    if (account.name === 'zyz.4.zy.z@gmail.com') {
-      return;
-    }
+    // if (account.name === 'zyz.4.zy.z@gmail.com') {
+      // return;
+    // }
 
     for (let i = Math.min(options.count, target.count) - 1; i >= 0; i--) {
       if (account.accountInfo.listedItems >= account.accountInfo.listingSize) {
