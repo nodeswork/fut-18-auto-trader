@@ -63,7 +63,7 @@ export class FifaFut18Account {
 
       this.accountInfo = {
         healthy:           true,
-        unhealthyReason:   '',
+        unhealthyReason:   'healthy',
         credits:           userMassInfo.userInfo.credits,
         listingSize:       listingSizeEntry.value,
         listedItems:       listingSizeEntry.value,
@@ -107,6 +107,14 @@ export class FifaFut18Account {
         playersInClub:     0,
         coachesInClub:     0,
       };
+    } finally {
+      await this.emitMetrics(
+        metrics.dimensions(
+          DIMENSIONS.UNHEALTY_REASON, this.accountInfo.unhealthyReason,
+        ),
+        METRICS.ACCOUNT_HEALTHY_RATE,
+        metrics.Average(this.accountInfo.healthy ? 1 : 0),
+      );
     }
   }
 

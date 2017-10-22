@@ -42,6 +42,7 @@ export namespace metrics {
 
   export const API_STATUS                 = 'api_status';
   export const HEALTHY_ACCOUNT            = 'healthy_account';
+  export const ACCOUNT_HEALTHY_RATE       = 'account_healthy_rate';
   export const TRADE_REQUEST              = 'trade_request';
 
   export const CREDITS                    = 'credits';

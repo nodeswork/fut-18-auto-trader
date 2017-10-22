@@ -10,6 +10,7 @@ import * as constants             from './constants';
 import { AccountActivityTracker } from './tracker';
 import { FifaFut18Account }       from './accounts';
 import * as utils                 from './utils';
+import { AnalysisHandler }        from './handlers';
 
 const GOLD_PLAYER_CONTRACT_RESOURCE_ID        = 5001006;
 const GOLD_COACH_CONTRACT_RESOURCE_ID         = 5001013;
@@ -394,6 +395,9 @@ class FutAutoTrader {
 @applet.Module({
   workers: [
     FutAutoTrader,
+  ],
+  handlers: [
+    AnalysisHandler,
   ],
   providers: [
     applet.FifaFut18Account,
