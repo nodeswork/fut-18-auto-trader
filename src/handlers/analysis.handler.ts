@@ -54,7 +54,7 @@ export class AnalysisHandler {
           },
           metrics:       [
             {
-              name:         METRICS.HEALTHY_ACCOUNT,
+              name:         METRICS.ACCOUNT_HEALTHY_RATE,
               displayName:  'checks',
               retrieve:     'denominator',
             },
@@ -66,6 +66,7 @@ export class AnalysisHandler {
           chart:         {
             type:        'lineChart',
           },
+          percentage:    true,
           metrics:       [
             {
               name:         METRICS.ACCOUNT_HEALTHY_RATE,
